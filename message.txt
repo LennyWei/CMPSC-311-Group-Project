@@ -9,6 +9,10 @@ import javafx.geometry.Insets;
 import java.io.*;
 import java.net.Socket;
 
+// How this works is that we use a 3rd-party port forwarding service such as ngrok 
+// in order to run our C server on one of their servers, which is accessible throught the internet. 
+// This client then connects to that ngrok server IP and works
+
 public class ChatApplication extends Application {
     private TextArea chatArea = new TextArea();
     private TextField inputField = new TextField();
