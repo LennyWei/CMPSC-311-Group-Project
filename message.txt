@@ -1,0 +1,99 @@
+package com.example.cmpsc_311;
+
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.stage.Stage;
+import javafx.geometry.Insets;
+import java.io.*;
+import java.net.Socket;
+
+public class ChatApplication extends Application {
+    private TextArea chatArea = new TextArea();
+    private TextField inputField = new TextField();
+    private Button sendButton = new Button("Send");
+    private Button connectButton = new Button("Connect");
+    private Button disconnectButton = new Button("Disconnect");
+    private TextField ipField = new TextField("localhost");
+    private TextField portField = new TextField("7777");
+    private TextField usernameField = new TextField("User");
+
+    private Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+
+    @Override
+    public void start(Stage stage) {
+        VBox root = new VBox(10);
+        root.setPadding(new Insets(10));
+
+        chatArea.setEditable(false);
+
+        HBox connectionBox = new HBox(10, new Label("IP:"), ipField,
+                new Label("Port:"), portField,
+                new Label("Username:"), usernameField,
+                connectButton, disconnectButton);
+
+        HBox messageBox = new HBox(10, inputField, sendButton);
+
+        root.getChildren().addAll(chatArea, connectionBox, messageBox);
+
+        connectButton.setOnAction(e -> connect());
+        disconnectButton.setOnAction(e -> disconnect());
+        sendButton.setOnAction(e -> sendMessage());
+
+        stage.setScene(new Scene(root, 700, 400));
+        stage.setTitle("JavaFX Chat Client");
+        stage.show();
+    }
+
+    private void connect() {
+        try {
+            socket = new Socket(ipField.getText(), Integer.parseInt(portField.getText()));
+            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            new Thread(this::receiveMessages).start();
+        } catch (IOException e) {
+            chatArea.appendText("Failed to connect to server.\n");
+        }
+    }
+
+    private void disconnect() {
+        try {
+            if (out != null) {
+                out.println("close");
+                out.println("<" + usernameField.getText() + " has disconnected.>");
+            }
+            if (socket != null) socket.close();
+            chatArea.appendText("Disconnected.\n");
+        } catch (IOException e) {
+            chatArea.appendText("Error while disconnecting.\n");
+        }
+    }
+
+    private void sendMessage() {
+        String msg = inputField.getText();
+        if (!msg.isEmpty() && out != null) {
+            out.println("[" + usernameField.getText() + "] " + msg);
+            inputField.clear();
+        }
+    }
+
+    private void receiveMessages() {
+        try {
+            String msg;
+            while ((msg = in.readLine()) != null) {
+                String finalMsg = msg;
+                javafx.application.Platform.runLater(() -> chatArea.appendText(finalMsg + "\n"));
+            }
+        } catch (IOException e) {
+            javafx.application.Platform.runLater(() -> chatArea.appendText("Connection closed.\n"));
+        }
+    }
+
+    public static void main(String[] args) {
+        launch();
+    }
+}
