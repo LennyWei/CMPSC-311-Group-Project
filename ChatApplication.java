@@ -31,10 +31,15 @@ public class ChatApplication extends Application {
         scrollPane = new ScrollPane(messageBox);
         scrollPane.setFitToWidth(true);
         inputField.setPromptText("Type your message...");
+        inputField.setStyle("-fx-background-radius: 10px;");
+        sendButton.setStyle("-fx-background-color: lightblue; -fx-background-radius: 10px;");
 
         HBox inputBox = new HBox(10, inputField, sendButton);
+        inputBox.setPadding(new Insets(10));
 
         VBox root = new VBox(10, scrollPane, inputBox);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
         root.setPrefSize(700, 400);
         Scene scene = new Scene(root);
         scene.getRoot().setStyle("-fx-font-family: 'Helvetica';");
@@ -68,14 +73,18 @@ public class ChatApplication extends Application {
         Optional<Pair<String, String>> result = dialog.showAndWait();
         result.ifPresent(setupInfo -> {
             String[] splitAddress = setupInfo.getKey().split(":");
-            ipAddress = splitAddress[0];
-            portNumber = splitAddress[1];
+            if (splitAddress.length > 1){
+                ipAddress = splitAddress[0];
+                portNumber = splitAddress[1];
+            }
+            else{
+                ipAddress = "127.0.0.1";
+                portNumber = "23";
+            }
             sendButton.setOnAction(e -> sendMessage(setupInfo.getValue()));
-            System.out.println("ConnectionInfo=" + setupInfo.getKey() + ", Username=" + setupInfo.getValue());
         });
 
         new Thread(() -> connect(ipAddress, portNumber)).start();
-
     }
 
     private void connect(String ip, String port) {
@@ -83,12 +92,13 @@ public class ChatApplication extends Application {
             socket = new Socket(ip, Integer.parseInt(port));
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
             receiveMessages();
-//            new Thread(this::receiveMessages).start();
+
         } catch (IOException e) {
-            System.out.println("fail");
-//            chatArea.appendText("Failed to connect to server.\n");
+            javafx.application.Platform.runLater(() ->{
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to connect to server.");
+                alert.showAndWait();
+            });
         }
     }
 
@@ -112,12 +122,12 @@ public class ChatApplication extends Application {
 
                     messageBox.getChildren().add(messageLabel);
                 });
-
-//                javafx.application.Platform.runLater(() -> chatArea.appendText(finalMsg + "\n"));
             }
         } catch (IOException e) {
-            System.out.println("error");
-//            javafx.application.Platform.runLater(() -> chatArea.appendText("Connection closed.\n"));
+            javafx.application.Platform.runLater(() ->{
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Error receiving message.");
+                alert.showAndWait();
+            });
         }
     }
 

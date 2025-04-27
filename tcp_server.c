@@ -78,7 +78,10 @@ void broadcast(const char *message, int sender_sock) {
         int sock = client_sockets[i];
         if (sock != 0) {
             if (write(sock, message, strlen(message)) < 0) {
+                close(sock);
+                client_sockets[i] = 0;
                 perror("write to client failed");
+                
             }
         }
     }
@@ -96,23 +99,26 @@ void *handle_client(void *arg)
     //will loop until the client sends the "close" command (just a string)
     for(;;)
     {
+        
         int len = read(client_sock, buffer, sizeof(buffer) - 1);
-
-        buffer[len] = '\0'; //null-terminates first so that the final character of the string is valid (all proper strings have a NULL at the end)
-
-        //if the "close" command was sent, break the loop!
-        if(strcmp(buffer, "close") == 0)
-            break;
-
+        //check for error when reading or if client socket is closed
+        if (len == 0) {
+            printf("client disconnected.\n");
+            close(client_sock);
+            remove_client(client_sock);
+            break; 
+        } else if (len < 0) {
+            perror("read failed");
+            close(client_sock);
+            remove_client(client_sock);
+            break; 
+        }
+        buffer[len] = '\0'; // Null-terminate
         printf("%s\n", buffer);
 
         //check the method for explanation
         broadcast(buffer, client_sock);
     }
-
-    close(client_sock);
-    remove_client(client_sock); //check the method for explanation
-
     return NULL;
 }
 
